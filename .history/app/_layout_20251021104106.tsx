@@ -1,0 +1,38 @@
+// app/_layout.tsx
+import React, { useEffect, useState } from 'react';
+import { Slot } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
+import { AuthProvider } from '../lib/auth';
+import auth from '@react-native-firebase/auth';
+import { useRouter } from 'expo-router';
+
+export default function Layout() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged((user) => {
+      if (user) {
+        router.replace('/');
+      } else {
+        router.replace('/login');
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFD6A5' }}>
+        <ActivityIndicator size="large" color="#FB8500" />
+      </View>
+    );
+  }
+
+  return (
+    <AuthProvider>
+      <Slot />
+    </AuthProvider>
+  );
+}

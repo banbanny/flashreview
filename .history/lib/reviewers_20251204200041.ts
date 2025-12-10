@@ -1,0 +1,74 @@
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "./firebase";
+
+// Reviewer type definition
+export interface Reviewer {
+  firestoreId?: string;
+  title: string;
+  questions: { id: string; question: string; answer: string }[];
+  userId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// ✅ Save a new reviewer to Firestore
+export const saveReviewer = async (
+  reviewer: Omit<Reviewer, "firestoreId">
+): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, "reviewers"), reviewer);
+    console.log("Reviewer saved with ID:", docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error("🔥 Error saving reviewer:", error);
+    throw new Error("Failed to save reviewer");
+  }
+};
+
+// ✅ Update reviewer by Firestore ID
+export const updateReviewer = async (
+  firestoreId: string,
+  reviewer: Partial<Reviewer>
+): Promise<void> => {
+  try {
+    const ref = doc(db, "reviewers", firestoreId);
+    await updateDoc(ref, reviewer);
+    console.log(`Reviewer ${firestoreId} updated successfully.`);
+  } catch (error) {
+    console.error("🔥 Error updating reviewer:", error);
+    throw new Error("Failed to update reviewer");
+  }
+};
+
+// ✅ Load all reviewers from Firestore
+export const loadReviewers = async (): Promise<Reviewer[]> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "reviewers"));
+    const reviewers: Reviewer[] = querySnapshot.docs.map((d) => ({
+      firestoreId: d.id,
+      ...(d.data() as Omit<Reviewer, "firestoreId">),
+    }));
+    return reviewers;
+  } catch (error) {
+    console.error("🔥 Error loading reviewers:", error);
+    throw new Error("Failed to load reviewers");
+  }
+};
+
+// ✅ Delete reviewer by Firestore ID
+export const deleteReviewer = async (firestoreId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, "reviewers", firestoreId));
+    console.log(`Reviewer ${firestoreId} deleted successfully.`);
+  } catch (error) {
+    console.error("🔥 Error deleting reviewer:", error);
+    throw new Error("Failed to delete reviewer");
+  }
+};

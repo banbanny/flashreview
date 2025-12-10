@@ -1,0 +1,18 @@
+// app/_layout.tsx
+import React from 'react';
+import { Stack } from 'expo-router';
+import { AuthProvider } from '../lib/auth';
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Auth screens */}
+        <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
+        {/* Tabs group (the main app) */}
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </AuthProvider>
+  );
+}
