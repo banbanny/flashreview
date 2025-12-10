@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../lib/auth";
 
@@ -9,31 +16,35 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#219EBC" />
-      </View>
+      <SafeAreaProvider>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#219EBC" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.welcome}>
-        Welcome, {userData?.firstName || "User"} 👋
-      </Text>
-      <Text style={styles.subtitle}>
-        Ready to create and review your flashcards?
-      </Text>
+    <SafeAreaProvider>
+      <View style={styles.container}>
+        <Text style={styles.welcome}>
+          Welcome, {userData?.firstName || "User"} 👋
+        </Text>
+        <Text style={styles.subtitle}>
+          Ready to create and review your flashcards?
+        </Text>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/addscreen")}
-      >
-        <Text style={styles.buttonText}>Create Flashcards</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.push("/addscreen")}
+        >
+          <Text style={styles.buttonText}>Create Flashcards</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaProvider>
   );
 }
-
+// sdasd
 const styles = StyleSheet.create({
   container: {
     flex: 1,

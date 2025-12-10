@@ -7,17 +7,20 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { Reviewer } from "../../lib/reviewers";
 import { deleteReviewer, loadReviewers } from "../../lib/reviewers";
 
 export default function ReviewScreen() {
   const [sets, setSets] = useState<Reviewer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
@@ -52,6 +55,14 @@ export default function ReviewScreen() {
     }
   }, []);
 
+  // Refresh handler
+  const onRefresh = useCallback(async () => {
+    if (!userId) return;
+    setRefreshing(true);
+    await loadSets(userId);
+    setRefreshing(false);
+  }, [userId, loadSets]);
+
   // Delete reviewer
   const handleDelete = (item: Reviewer) => {
     if (!item.firestoreId) {
@@ -59,33 +70,29 @@ export default function ReviewScreen() {
       return;
     }
 
-    Alert.alert(
-      "Confirm Delete",
-      `Are you sure you want to delete "${item.title}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setDeletingId(item.firestoreId!);
-            // Optimistic UI
-            setSets(prev => prev.filter(r => r.firestoreId !== item.firestoreId));
-
-            try {
-              await deleteReviewer(item.firestoreId!);
-              Alert.alert("Deleted", "Reviewer removed.");
-            } catch (err) {
-              console.error("Delete Error:", err);
-              Alert.alert("Error", "Failed to delete reviewer.");
-              if (userId) loadSets(userId);
-            } finally {
-              setDeletingId(null);
-            }
+    Alert.alert("Confirm Delete", `Delete "${item.title}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setDeletingId(item.firestoreId!);
+          setSets((prev) =>
+            prev.filter((r) => r.firestoreId !== item.firestoreId)
+          );
+          try {
+            await deleteReviewer(item.firestoreId!);
+            Alert.alert("Deleted", "Reviewer removed.");
+          } catch (err) {
+            console.error("Delete Error:", err);
+            Alert.alert("Error", "Failed to delete reviewer.");
+            if (userId) loadSets(userId);
+          } finally {
+            setDeletingId(null);
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   // Navigate to review section
@@ -115,71 +122,89 @@ export default function ReviewScreen() {
     }
   };
 
+  // Loading state
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7A4D00" />
-        <Text style={styles.loadingText}>Loading your reviewers...</Text>
-      </View>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.center}>
+          <ActivityIndicator size="large" color="#7A4D00" />
+          <Text style={styles.loadingText}>Loading your reviewers...</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
+  // Not logged in
   if (!userId) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyText}>Please log in to see your reviewers.</Text>
-      </View>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.center}>
+          <Text style={styles.emptyText}>Please log in to see your reviewers.</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
+  // No sets
   if (sets.length === 0) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyText}>No saved reviewers yet.</Text>
-        <Text style={styles.subText}>Go to the Add tab to create one!</Text>
-      </View>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.center}>
+          <Text style={styles.emptyText}>No saved reviewers yet.</Text>
+          <Text style={styles.subText}>Go to the Add tab to create one!</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
+  // Main list
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>📚 My Review Sets</Text>
-      <FlatList
-        data={sets}
-        keyExtractor={(item) => item.firestoreId!}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <View style={styles.btnRow}>
-              <TouchableOpacity
-                onPress={() => handleReview(item)}
-                style={[styles.btn, { backgroundColor: "#2E8B57" }]}
-              >
-                <Text style={styles.btnText}>Review</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleEdit(item)}
-                style={[styles.btn, { backgroundColor: "#FFA500" }]}
-              >
-                <Text style={styles.btnText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleDelete(item)}
-                disabled={deletingId === item.firestoreId}
-                style={[
-                  styles.btn,
-                  { backgroundColor: deletingId === item.firestoreId ? "#CCCCCC" : "#FF6347" }
-                ]}
-              >
-                <Text style={styles.btnText}>
-                  {deletingId === item.firestoreId ? "Deleting..." : "Delete"}
-                </Text>
-              </TouchableOpacity>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>📚 My Review Sets</Text>
+        <FlatList
+          data={sets}
+          keyExtractor={(item) => item.firestoreId!}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <View style={styles.btnRow}>
+                <TouchableOpacity
+                  onPress={() => handleReview(item)}
+                  style={[styles.btn, { backgroundColor: "#2E8B57" }]}
+                >
+                  <Text style={styles.btnText}>Review</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleEdit(item)}
+                  style={[styles.btn, { backgroundColor: "#FFA500" }]}
+                >
+                  <Text style={styles.btnText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDelete(item)}
+                  disabled={deletingId === item.firestoreId}
+                  style={[
+                    styles.btn,
+                    {
+                      backgroundColor:
+                        deletingId === item.firestoreId ? "#CCCCCC" : "#FF6347",
+                    },
+                  ]}
+                >
+                  <Text style={styles.btnText}>
+                    {deletingId === item.firestoreId ? "Deleting..." : "Delete"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        )}
-      />
-    </View>
+          )}
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -192,7 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: "center",
   },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFF7E6" },
   loadingText: { marginTop: 10, color: "#7A4D00", fontSize: 16 },
   emptyText: { color: "#7A4D00", fontSize: 18, fontWeight: "bold" },
   subText: { color: "#A36A00", marginTop: 5 },
